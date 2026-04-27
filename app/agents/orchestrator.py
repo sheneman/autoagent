@@ -360,13 +360,17 @@ async def run_pipeline(
                 await deps.send_verbose("info", "Max iterations — using best result",
                     f"Best score: {best_score}/10 (iteration with highest overall)")
             else:
+                gaps = eval_result.additional_research
+                gap_msg = f" Searches: {', '.join(gaps[:3])}" if gaps else ""
                 await deps.send_status(
                     "evaluator",
                     f"Report needs improvement. Looping back for iteration "
-                    f"{iteration + 2}/{config.max_research_iterations}..."
+                    f"{iteration + 2}/{config.max_research_iterations}...{gap_msg}"
                 )
                 await deps.send_verbose("info", "Evaluation FAILED — looping",
-                    f"Iteration {iteration + 1}/{config.max_research_iterations}\n{scores}")
+                    f"Iteration {iteration + 1}/{config.max_research_iterations}\n{scores}\n\n"
+                    f"Improvements requested:\n" + "\n".join(f"  - {i}" for i in eval_result.improvements) + "\n\n"
+                    f"Additional searches:\n" + "\n".join(f"  > {q}" for q in eval_result.additional_research))
 
         # Use best result across all iterations, not just the last
         writer_result = best_writer_result or writer_result

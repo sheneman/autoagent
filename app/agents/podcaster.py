@@ -56,9 +56,8 @@ class PodcastScript(BaseModel):
 
 
 podcaster_agent = Agent(
-    "openai:placeholder",  # model set at runtime
     deps_type=AgentDeps,
-    result_type=PodcastScript,
+    output_type=PodcastScript,
     system_prompt=SYSTEM_PROMPT,
     retries=2,
 )

@@ -80,12 +80,6 @@ async def run_pipeline(
     model = _build_model(config)
     memory = MemoryManager(config.memory_dir)
 
-    # Override each agent's model at runtime
-    researcher_agent.model = model
-    writer_agent.model = model
-    evaluator_agent.model = model
-    podcaster_agent.model = model
-
     async with httpx.AsyncClient() as http_client:
         deps = AgentDeps(
             config=config,
@@ -157,10 +151,10 @@ async def run_pipeline(
 
             try:
                 result = await asyncio.wait_for(
-                    researcher_agent.run(research_prompt, deps=deps),
+                    researcher_agent.run(research_prompt, deps=deps, model=model),
                     timeout=config.request_timeout * 2,
                 )
-                research_result = result.data
+                research_result = result.output
             except asyncio.TimeoutError:
                 await deps.send_status("researcher", "Research timed out, using partial results")
                 if not research_result:
@@ -198,10 +192,10 @@ async def run_pipeline(
 
             try:
                 result = await asyncio.wait_for(
-                    writer_agent.run(write_prompt, deps=deps),
+                    writer_agent.run(write_prompt, deps=deps, model=model),
                     timeout=config.request_timeout * 2,
                 )
-                writer_result = result.data
+                writer_result = result.output
             except asyncio.TimeoutError:
                 await deps.send_status("writer", "Writing timed out")
                 if not writer_result:
@@ -231,10 +225,10 @@ async def run_pipeline(
 
             try:
                 result = await asyncio.wait_for(
-                    evaluator_agent.run(eval_prompt, deps=deps),
+                    evaluator_agent.run(eval_prompt, deps=deps, model=model),
                     timeout=config.request_timeout,
                 )
-                eval_result = result.data
+                eval_result = result.output
             except asyncio.TimeoutError:
                 await deps.send_status("evaluator", "Evaluation timed out, accepting report")
                 eval_result = Evaluation(
@@ -282,10 +276,10 @@ async def run_pipeline(
 
         try:
             result = await asyncio.wait_for(
-                podcaster_agent.run(podcast_prompt, deps=deps),
+                podcaster_agent.run(podcast_prompt, deps=deps, model=model),
                 timeout=config.request_timeout * 2,
             )
-            podcast_result: PodcastScript = result.data
+            podcast_result: PodcastScript = result.output
         except asyncio.TimeoutError:
             await deps.send_status("podcaster", "Script generation timed out")
             raise RuntimeError("Podcast script generation timed out")

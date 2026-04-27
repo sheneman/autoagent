@@ -46,9 +46,8 @@ class WrittenReport(BaseModel):
 
 
 writer_agent = Agent(
-    "openai:placeholder",  # model set at runtime
     deps_type=AgentDeps,
-    result_type=WrittenReport,
+    output_type=WrittenReport,
     system_prompt=SYSTEM_PROMPT,
     retries=2,
 )

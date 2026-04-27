@@ -58,9 +58,8 @@ class Evaluation(BaseModel):
 
 
 evaluator_agent = Agent(
-    "openai:placeholder",  # model set at runtime
     deps_type=AgentDeps,
-    result_type=Evaluation,
+    output_type=Evaluation,
     system_prompt=SYSTEM_PROMPT,
     retries=2,
 )

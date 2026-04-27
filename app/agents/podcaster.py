@@ -143,7 +143,7 @@ async def generate_podcast_audio(
             "input": text,
             "voice": voice,
             "response_format": "mp3",
-            "speed": 1.0,
+            "speed": 1.2,
         }
 
         resp = None

@@ -47,7 +47,7 @@ class Config:
         default_factory=lambda: os.getenv("PODCAST_VOICE_A", "bm_george")
     )
     podcast_voice_b: str = field(
-        default_factory=lambda: os.getenv("PODCAST_VOICE_B", "af_sarah")
+        default_factory=lambda: os.getenv("PODCAST_VOICE_B", "af_heart")
     )
 
     # Paths

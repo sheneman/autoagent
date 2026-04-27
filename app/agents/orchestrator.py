@@ -184,13 +184,18 @@ async def run_pipeline(
 
             # Add feedback from previous evaluation if looping
             if eval_result and not eval_result.passed:
-                feedback = "\n".join(eval_result.improvements)
-                extra_searches = "\n".join(eval_result.additional_research)
+                feedback = "\n".join(f"- {imp}" for imp in eval_result.improvements)
+                extra_searches = "\n".join(f"- {q}" for q in eval_result.additional_research)
                 research_prompt = (
                     f"Continue researching: {topic}\n\n"
-                    f"Previous evaluation feedback:\n{feedback}\n\n"
-                    f"Suggested additional searches:\n{extra_searches}\n\n"
-                    f"Previous findings to build upon:\n"
+                    f"The previous report was evaluated and FAILED quality review. "
+                    f"You MUST address the gaps below.\n\n"
+                    f"== REQUIRED IMPROVEMENTS ==\n{feedback}\n\n"
+                    f"== REQUIRED SEARCHES — run each of these as a web search ==\n"
+                    f"{extra_searches}\n\n"
+                    f"Execute EVERY search query listed above using the brave_web_search tool. "
+                    f"These are specific gaps identified by the evaluator that must be filled.\n\n"
+                    f"== PREVIOUS FINDINGS (build on these, do not repeat) ==\n"
                     f"{research_result.raw_notes if research_result else ''}\n\n"
                     f"Skill guidance:\n{research_skill}"
                 )
@@ -334,10 +339,12 @@ async def run_pipeline(
                 )
 
             scores = (
-                f"Accuracy: {eval_result.accuracy_score}/10, "
-                f"Completeness: {eval_result.completeness_score}/10, "
-                f"Clarity: {eval_result.clarity_score}/10, "
-                f"Overall: {eval_result.overall_score}/10"
+                f"Accuracy: {eval_result.accuracy_score}, "
+                f"Completeness: {eval_result.completeness_score}, "
+                f"Clarity: {eval_result.clarity_score}, "
+                f"Structure: {eval_result.structure_score}, "
+                f"Engagement: {eval_result.engagement_score} "
+                f"→ Overall: {eval_result.overall_score}/10"
             )
             await deps.send_status("evaluator", f"Scores: {scores}")
 

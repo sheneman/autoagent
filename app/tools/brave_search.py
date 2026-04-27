@@ -19,6 +19,8 @@ from app.agents.deps import AgentDeps
 
 async def brave_web_search(ctx: RunContext[AgentDeps], query: str) -> str:
     """Search the web using Brave Search. Returns titles, snippets, and URLs."""
+    await ctx.deps.send_verbose("tool_call", "brave_web_search", f"Query: {query}")
+
     headers = {
         "X-Subscription-Token": ctx.deps.config.brave_api_key,
         "Accept": "application/json",
@@ -38,9 +40,13 @@ async def brave_web_search(ctx: RunContext[AgentDeps], query: str) -> str:
         )
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
-        return f"Search API error: {e.response.status_code}"
+        err = f"Search API error: {e.response.status_code}"
+        await ctx.deps.send_verbose("tool_result", "brave_web_search ERROR", err)
+        return err
     except httpx.RequestError as e:
-        return f"Search request failed: {e}"
+        err = f"Search request failed: {e}"
+        await ctx.deps.send_verbose("tool_result", "brave_web_search ERROR", err)
+        return err
 
     data = resp.json()
     results = []
@@ -50,14 +56,17 @@ async def brave_web_search(ctx: RunContext[AgentDeps], query: str) -> str:
         url = item.get("url", "")
         results.append(f"**{title}**\n{description}\nSource: {url}")
 
-    if not results:
-        return "No results found for this query."
-
-    return "\n\n---\n\n".join(results)
+    output = "\n\n---\n\n".join(results) if results else "No results found for this query."
+    await ctx.deps.send_verbose(
+        "tool_result", f"brave_web_search → {len(results)} results", output
+    )
+    return output
 
 
 async def brave_news_search(ctx: RunContext[AgentDeps], query: str) -> str:
     """Search recent news using Brave Search. Returns headlines and summaries."""
+    await ctx.deps.send_verbose("tool_call", "brave_news_search", f"Query: {query}")
+
     headers = {
         "X-Subscription-Token": ctx.deps.config.brave_api_key,
         "Accept": "application/json",
@@ -66,7 +75,7 @@ async def brave_news_search(ctx: RunContext[AgentDeps], query: str) -> str:
         "q": query,
         "count": 5,
         "search_lang": "en",
-        "freshness": "pw",  # past week
+        "freshness": "pw",
     }
 
     try:
@@ -78,7 +87,9 @@ async def brave_news_search(ctx: RunContext[AgentDeps], query: str) -> str:
         )
         resp.raise_for_status()
     except (httpx.HTTPStatusError, httpx.RequestError) as e:
-        return f"News search failed: {e}"
+        err = f"News search failed: {e}"
+        await ctx.deps.send_verbose("tool_result", "brave_news_search ERROR", err)
+        return err
 
     data = resp.json()
     results = []
@@ -89,7 +100,8 @@ async def brave_news_search(ctx: RunContext[AgentDeps], query: str) -> str:
         age = item.get("age", "")
         results.append(f"**{title}** ({age})\n{description}\nSource: {url}")
 
-    if not results:
-        return "No recent news found for this query."
-
-    return "\n\n---\n\n".join(results)
+    output = "\n\n---\n\n".join(results) if results else "No recent news found for this query."
+    await ctx.deps.send_verbose(
+        "tool_result", f"brave_news_search → {len(results)} results", output
+    )
+    return output

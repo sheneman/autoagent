@@ -60,10 +60,41 @@ def _load_skill(skills_dir: str, name: str) -> str:
     return ""
 
 
+def _extract_message_trace(result) -> str:
+    """Extract a readable trace from an agent run's message history."""
+    lines = []
+    try:
+        messages = result.all_messages()
+        for msg in messages:
+            for part in msg.parts:
+                kind = type(part).__name__
+                if kind == "SystemPromptPart":
+                    lines.append(f"[SYSTEM] {part.content[:300]}...")
+                elif kind == "UserPromptPart":
+                    content = str(part.content)
+                    lines.append(f"[USER] {content[:500]}{'...' if len(content) > 500 else ''}")
+                elif kind == "TextPart":
+                    lines.append(f"[ASSISTANT] {part.content[:800]}{'...' if len(part.content) > 800 else ''}")
+                elif kind == "ToolCallPart":
+                    args_str = str(part.args)[:300]
+                    lines.append(f"[TOOL CALL] {part.tool_name}({args_str})")
+                elif kind == "ToolReturnPart":
+                    content = str(part.content)[:500]
+                    lines.append(f"[TOOL RETURN] {part.tool_name} → {content}")
+                elif kind == "ThinkingPart":
+                    lines.append(f"[THINKING] {part.content[:600]}{'...' if len(part.content) > 600 else ''}")
+                else:
+                    lines.append(f"[{kind}] {str(part)[:200]}")
+    except Exception as e:
+        lines.append(f"[trace extraction error: {e}]")
+    return "\n".join(lines)
+
+
 async def run_pipeline(
     topic: str,
     config: Config,
     status_callback=None,
+    verbose_callback=None,
     user_input_callback=None,
 ) -> dict:
     """Execute the full research-to-podcast pipeline.
@@ -72,6 +103,7 @@ async def run_pipeline(
         topic: The research topic or question.
         config: Application configuration.
         status_callback: Async callable(stage, message) for UI updates.
+        verbose_callback: Async callable(kind, title, body) for detailed traces.
         user_input_callback: Reserved for future interactive input.
 
     Returns:
@@ -86,6 +118,7 @@ async def run_pipeline(
             http_client=http_client,
             memory=memory,
             status_callback=status_callback,
+            verbose_callback=verbose_callback,
         )
 
         results = {
@@ -107,6 +140,10 @@ async def run_pipeline(
         evaluation_skill = _load_skill(config.skills_dir, "evaluation")
         podcasting_skill = _load_skill(config.skills_dir, "podcasting")
 
+        await deps.send_verbose("info", "Skills loaded",
+            f"research.md ({len(research_skill)} chars), writing.md ({len(writing_skill)} chars), "
+            f"evaluation.md ({len(evaluation_skill)} chars), podcasting.md ({len(podcasting_skill)} chars)")
+
         # Check memory for prior research on this topic
         prior_research = memory.search(topic, category="facts", limit=5)
         prior_context = ""
@@ -114,6 +151,9 @@ async def run_pipeline(
             prior_context = "\n\nPrior research on related topics:\n"
             for entry in prior_research:
                 prior_context += f"- {entry.content}\n"
+            await deps.send_verbose("info", f"Memory recall: {len(prior_research)} prior facts", prior_context)
+        else:
+            await deps.send_verbose("info", "Memory recall: no prior research found", "")
 
         # ── Stage 1: Research ──────────────────────────────────────
         await deps.send_status("researcher", f"Starting research on: {topic}")
@@ -149,18 +189,33 @@ async def run_pipeline(
                     f"Skill guidance:\n{research_skill}"
                 )
 
+            await deps.send_verbose("llm_request", "Researcher Agent prompt",
+                research_prompt[:2000] + ("..." if len(research_prompt) > 2000 else ""))
+
             try:
                 result = await asyncio.wait_for(
                     researcher_agent.run(research_prompt, deps=deps, model=model),
                     timeout=config.request_timeout * 2,
                 )
                 research_result = result.output
+
+                trace = _extract_message_trace(result)
+                await deps.send_verbose("llm_response", "Researcher Agent full trace", trace)
+                await deps.send_verbose("llm_response", "Researcher Agent output",
+                    f"Topic: {research_result.topic}\n"
+                    f"Findings: {len(research_result.key_findings)}\n"
+                    f"Sources: {len(research_result.sources)}\n"
+                    f"Gaps: {research_result.gaps}\n\n"
+                    f"Raw notes:\n{research_result.raw_notes[:1500]}")
+
             except asyncio.TimeoutError:
                 await deps.send_status("researcher", "Research timed out, using partial results")
+                await deps.send_verbose("info", "TIMEOUT", "Researcher agent timed out")
                 if not research_result:
                     raise RuntimeError("Research timed out with no results")
             except Exception as e:
                 await deps.send_status("researcher", f"Research error: {e}")
+                await deps.send_verbose("info", "ERROR", str(e))
                 if not research_result:
                     raise
 
@@ -190,18 +245,32 @@ async def run_pipeline(
                     + "\n".join(f"- {imp}" for imp in eval_result.improvements)
                 )
 
+            await deps.send_verbose("llm_request", "Writer Agent prompt",
+                write_prompt[:2000] + ("..." if len(write_prompt) > 2000 else ""))
+
             try:
                 result = await asyncio.wait_for(
                     writer_agent.run(write_prompt, deps=deps, model=model),
                     timeout=config.request_timeout * 2,
                 )
                 writer_result = result.output
+
+                trace = _extract_message_trace(result)
+                await deps.send_verbose("llm_response", "Writer Agent full trace", trace)
+                await deps.send_verbose("llm_response", "Writer Agent output",
+                    f"Title: {writer_result.title}\n"
+                    f"Words: {writer_result.word_count}\n\n"
+                    f"Executive Summary:\n{writer_result.executive_summary[:500]}\n\n"
+                    f"Report preview:\n{writer_result.full_report[:1000]}...")
+
             except asyncio.TimeoutError:
                 await deps.send_status("writer", "Writing timed out")
+                await deps.send_verbose("info", "TIMEOUT", "Writer agent timed out")
                 if not writer_result:
                     raise RuntimeError("Writing timed out with no results")
             except Exception as e:
                 await deps.send_status("writer", f"Writing error: {e}")
+                await deps.send_verbose("info", "ERROR", str(e))
                 if not writer_result:
                     raise
 
@@ -223,14 +292,33 @@ async def run_pipeline(
                 + f"\n\nEvaluation criteria guidance:\n{evaluation_skill}"
             )
 
+            await deps.send_verbose("llm_request", "Evaluator Agent prompt",
+                eval_prompt[:2000] + ("..." if len(eval_prompt) > 2000 else ""))
+
             try:
                 result = await asyncio.wait_for(
                     evaluator_agent.run(eval_prompt, deps=deps, model=model),
                     timeout=config.request_timeout,
                 )
                 eval_result = result.output
+
+                trace = _extract_message_trace(result)
+                await deps.send_verbose("llm_response", "Evaluator Agent full trace", trace)
+                await deps.send_verbose("llm_response", "Evaluator Agent output",
+                    f"Scores: accuracy={eval_result.accuracy_score}, "
+                    f"completeness={eval_result.completeness_score}, "
+                    f"clarity={eval_result.clarity_score}, "
+                    f"structure={eval_result.structure_score}, "
+                    f"engagement={eval_result.engagement_score}, "
+                    f"overall={eval_result.overall_score}\n"
+                    f"Passed: {eval_result.passed}\n\n"
+                    f"Strengths:\n" + "\n".join(f"  + {s}" for s in eval_result.strengths) + "\n\n"
+                    f"Improvements:\n" + "\n".join(f"  - {i}" for i in eval_result.improvements) + "\n\n"
+                    f"Additional research:\n" + "\n".join(f"  ? {q}" for q in eval_result.additional_research))
+
             except asyncio.TimeoutError:
                 await deps.send_status("evaluator", "Evaluation timed out, accepting report")
+                await deps.send_verbose("info", "TIMEOUT", "Evaluator agent timed out — auto-accepting")
                 eval_result = Evaluation(
                     accuracy_score=7, completeness_score=7, clarity_score=7,
                     structure_score=7, engagement_score=7, overall_score=7,
@@ -249,6 +337,7 @@ async def run_pipeline(
 
             if eval_result.passed:
                 await deps.send_status("evaluator", "Report PASSED quality review!")
+                await deps.send_verbose("info", "Evaluation PASSED", scores)
                 break
             else:
                 await deps.send_status(
@@ -256,6 +345,8 @@ async def run_pipeline(
                     f"Report needs improvement. Looping back... "
                     f"({iteration + 1}/{config.max_research_iterations})"
                 )
+                await deps.send_verbose("info", "Evaluation FAILED — looping",
+                    f"Iteration {iteration + 1}/{config.max_research_iterations}\n{scores}")
 
         results["research"] = research_result.model_dump() if research_result else None
         results["report"] = writer_result.model_dump() if writer_result else None
@@ -274,12 +365,24 @@ async def run_pipeline(
             + f"\n\nPodcast style guidance:\n{podcasting_skill}"
         )
 
+        await deps.send_verbose("llm_request", "Podcaster Agent prompt",
+            podcast_prompt[:2000] + ("..." if len(podcast_prompt) > 2000 else ""))
+
         try:
             result = await asyncio.wait_for(
                 podcaster_agent.run(podcast_prompt, deps=deps, model=model),
                 timeout=config.request_timeout * 2,
             )
             podcast_result: PodcastScript = result.output
+
+            trace = _extract_message_trace(result)
+            await deps.send_verbose("llm_response", "Podcaster Agent full trace", trace)
+            await deps.send_verbose("llm_response", "Podcaster Agent output",
+                f"Title: {podcast_result.title}\n"
+                f"Segments: {podcast_result.segment_count}\n"
+                f"Duration: ~{podcast_result.estimated_duration_minutes} min\n\n"
+                f"Script preview:\n{podcast_result.script[:1500]}...")
+
         except asyncio.TimeoutError:
             await deps.send_status("podcaster", "Script generation timed out")
             raise RuntimeError("Podcast script generation timed out")
@@ -297,6 +400,9 @@ async def run_pipeline(
         await deps.send_status("podcaster", "Generating podcast audio...")
 
         segments = parse_script_segments(podcast_result.script)
+        await deps.send_verbose("info", f"Parsed {len(segments)} audio segments",
+            "\n".join(f"{s['speaker']}: {s['text'][:80]}..." for s in segments[:10]))
+
         if segments:
             timestamp = int(time.time())
             audio_path = f"{config.output_dir}/podcast_{timestamp}.mp3"
@@ -305,6 +411,7 @@ async def run_pipeline(
                 results["audio_path"] = audio_file
             except Exception as e:
                 await deps.send_status("podcaster", f"Audio generation failed: {e}")
+                await deps.send_verbose("info", "TTS ERROR", str(e))
                 results["audio_path"] = None
         else:
             await deps.send_status("podcaster", "No valid segments found in script")

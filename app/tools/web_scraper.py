@@ -19,6 +19,8 @@ MAX_CONTENT_LENGTH = 6000
 
 async def scrape_url(ctx: RunContext[AgentDeps], url: str) -> str:
     """Fetch a web page and extract its main text content."""
+    await ctx.deps.send_verbose("tool_call", "scrape_url", f"URL: {url}")
+
     headers = {
         "User-Agent": "AutoAgent/1.0 (research bot)",
         "Accept": "text/html",
@@ -33,7 +35,9 @@ async def scrape_url(ctx: RunContext[AgentDeps], url: str) -> str:
         )
         resp.raise_for_status()
     except (httpx.HTTPStatusError, httpx.RequestError) as e:
-        return f"Failed to fetch {url}: {e}"
+        err = f"Failed to fetch {url}: {e}"
+        await ctx.deps.send_verbose("tool_result", "scrape_url ERROR", err)
+        return err
 
     soup = BeautifulSoup(resp.text, "html.parser")
 
@@ -45,4 +49,8 @@ async def scrape_url(ctx: RunContext[AgentDeps], url: str) -> str:
     if len(text) > MAX_CONTENT_LENGTH:
         text = text[:MAX_CONTENT_LENGTH] + "\n\n[Content truncated...]"
 
-    return f"Content from {url}:\n\n{text}"
+    output = f"Content from {url}:\n\n{text}"
+    await ctx.deps.send_verbose(
+        "tool_result", f"scrape_url → {len(text)} chars", output[:2000] + ("..." if len(output) > 2000 else "")
+    )
+    return output

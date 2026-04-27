@@ -30,6 +30,9 @@ class AgentDeps:
     # Callback to send status updates to the web UI
     status_callback: object = None  # async callable(stage, message)
 
+    # Callback for verbose trace events: async callable(kind, title, body)
+    verbose_callback: object = None
+
     # Event for pausing the workflow to ask the user a question
     user_response_event: asyncio.Event = field(default_factory=asyncio.Event)
     user_response_text: str = ""
@@ -38,6 +41,14 @@ class AgentDeps:
         """Broadcast a status update to the web frontend."""
         if self.status_callback:
             await self.status_callback(stage, message)
+
+    async def send_verbose(self, kind: str, title: str, body: str = ""):
+        """Send a detailed trace event to the verbose panel.
+
+        kind: 'tool_call', 'tool_result', 'llm_request', 'llm_response', 'info'
+        """
+        if self.verbose_callback:
+            await self.verbose_callback(kind, title, body)
 
     async def ask_user(self, question: str) -> str:
         """Pause the workflow and ask the user for input via the web UI."""

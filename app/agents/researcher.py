@@ -63,18 +63,23 @@ researcher_agent.tool(scrape_url)
 @researcher_agent.tool
 async def recall_memory(ctx: RunContext[AgentDeps], query: str) -> str:
     """Search agent memory for prior research on a topic."""
+    await ctx.deps.send_verbose("tool_call", "recall_memory", f"Query: {query}")
     entries = ctx.deps.memory.search(query, category="facts", limit=5)
     if not entries:
+        await ctx.deps.send_verbose("tool_result", "recall_memory → 0 hits", "No prior research found.")
         return "No prior research found on this topic."
     results = []
     for e in entries:
         results.append(f"[{e.source}] {e.content}")
-    return "\n\n".join(results)
+    output = "\n\n".join(results)
+    await ctx.deps.send_verbose("tool_result", f"recall_memory → {len(entries)} hits", output)
+    return output
 
 
 @researcher_agent.tool
 async def save_fact(ctx: RunContext[AgentDeps], fact: str, tags: str, source: str) -> str:
     """Save an important fact to memory for future reference. Tags should be comma-separated."""
+    await ctx.deps.send_verbose("tool_call", "save_fact", f"Fact: {fact}\nTags: {tags}\nSource: {source}")
     entry = MemoryEntry(
         content=fact,
         category="facts",
@@ -82,4 +87,5 @@ async def save_fact(ctx: RunContext[AgentDeps], fact: str, tags: str, source: st
         source=source,
     )
     entry_id = ctx.deps.memory.add(entry)
+    await ctx.deps.send_verbose("tool_result", f"save_fact → {entry_id}", fact[:200])
     return f"Fact saved (id: {entry_id})"

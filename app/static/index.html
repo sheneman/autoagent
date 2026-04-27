@@ -17,6 +17,8 @@
             --yellow: #eab308;
             --red: #ef4444;
             --blue: #3b82f6;
+            --orange: #f97316;
+            --teal: #14b8a6;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -104,6 +106,21 @@
         .btn:hover { opacity: 0.9; }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 0.4rem 0.9rem;
+            font-size: 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .btn-outline:hover { border-color: var(--teal); color: var(--teal); }
+        .btn-outline.active { border-color: var(--teal); color: var(--teal); background: rgba(20, 184, 166, 0.1); }
+
         /* Agent Pipeline Tracker */
         .pipeline {
             display: flex;
@@ -172,6 +189,8 @@
             animation: pulse 1.5s infinite;
         }
 
+        .status-header .spacer { flex: 1; }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
@@ -200,10 +219,143 @@
         .stage-researcher { color: var(--blue); }
         .stage-writer { color: var(--accent); }
         .stage-evaluator { color: var(--yellow); }
-        .stage-podcaster { color: #f97316; }
+        .stage-podcaster { color: var(--orange); }
         .stage-complete { color: var(--green); }
         .stage-error { color: var(--red); }
         .stage-question { color: var(--yellow); }
+
+        /* ── Verbose Trace Panel ─────────────────────────────── */
+        .verbose-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            display: none;
+        }
+
+        .verbose-panel.visible { display: block; }
+
+        .verbose-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--teal);
+        }
+
+        .verbose-header .spacer { flex: 1; }
+
+        .verbose-filters {
+            display: flex;
+            gap: 0.35rem;
+        }
+
+        .verbose-filters .filter-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 0.2rem 0.5rem;
+            font-size: 0.7rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .verbose-filters .filter-btn:hover { border-color: var(--text-dim); }
+        .verbose-filters .filter-btn.on { border-color: var(--teal); color: var(--teal); background: rgba(20, 184, 166, 0.08); }
+
+        .verbose-log {
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 0.5rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.75rem;
+        }
+
+        .verbose-entry {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 0.4rem;
+            overflow: hidden;
+        }
+
+        .verbose-entry-header {
+            padding: 0.4rem 0.6rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            user-select: none;
+            transition: background 0.15s;
+        }
+
+        .verbose-entry-header:hover { background: rgba(255,255,255,0.03); }
+
+        .verbose-entry-header .arrow {
+            font-size: 0.65rem;
+            transition: transform 0.15s;
+            color: var(--text-dim);
+        }
+
+        .verbose-entry.open .verbose-entry-header .arrow { transform: rotate(90deg); }
+
+        .verbose-entry-header .badge {
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .badge-tool_call      { background: rgba(59,130,246,0.15); color: var(--blue); }
+        .badge-tool_result    { background: rgba(34,197,94,0.15); color: var(--green); }
+        .badge-llm_request    { background: rgba(108,99,255,0.15); color: var(--accent); }
+        .badge-llm_response   { background: rgba(249,115,22,0.15); color: var(--orange); }
+        .badge-info           { background: rgba(139,143,163,0.15); color: var(--text-dim); }
+
+        .verbose-entry-header .title {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .verbose-entry-header .ts {
+            color: var(--text-dim);
+            font-size: 0.65rem;
+            white-space: nowrap;
+        }
+
+        .verbose-entry-body {
+            display: none;
+            padding: 0.5rem 0.6rem;
+            border-top: 1px solid var(--border);
+            background: rgba(0,0,0,0.2);
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.5;
+            color: var(--text-dim);
+        }
+
+        .verbose-entry.open .verbose-entry-body { display: block; }
+
+        .verbose-count {
+            background: rgba(20, 184, 166, 0.15);
+            color: var(--teal);
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
 
         /* Results */
         .results { display: none; }
@@ -291,7 +443,7 @@
         }
 
         .podcast-script .speaker-alex { color: var(--blue); font-weight: 600; }
-        .podcast-script .speaker-sam { color: #f97316; font-weight: 600; }
+        .podcast-script .speaker-sam { color: var(--orange); font-weight: 600; }
 
         /* User Input Area */
         .user-input-area {
@@ -368,6 +520,8 @@
             <div class="status-header">
                 <div class="dot" id="statusDot"></div>
                 <span>Agent Activity</span>
+                <div class="spacer"></div>
+                <button class="btn-outline" id="verboseToggle" onclick="toggleVerbose()">Verbose Trace</button>
             </div>
             <div class="status-log" id="statusLog">
                 <div class="status-entry">
@@ -376,6 +530,23 @@
                     <span class="msg">Enter a topic and click Research to begin.</span>
                 </div>
             </div>
+        </div>
+
+        <!-- Verbose Trace Panel -->
+        <div class="verbose-panel" id="verbosePanel">
+            <div class="verbose-header">
+                <span>Verbose Trace</span>
+                <span class="verbose-count" id="verboseCount">0</span>
+                <div class="spacer"></div>
+                <div class="verbose-filters">
+                    <button class="filter-btn on" data-kind="tool_call" onclick="toggleFilter(this)">TOOL CALL</button>
+                    <button class="filter-btn on" data-kind="tool_result" onclick="toggleFilter(this)">TOOL RESULT</button>
+                    <button class="filter-btn on" data-kind="llm_request" onclick="toggleFilter(this)">LLM REQ</button>
+                    <button class="filter-btn on" data-kind="llm_response" onclick="toggleFilter(this)">LLM RESP</button>
+                    <button class="filter-btn on" data-kind="info" onclick="toggleFilter(this)">INFO</button>
+                </div>
+            </div>
+            <div class="verbose-log" id="verboseLog"></div>
         </div>
 
         <!-- Results -->
@@ -402,6 +573,61 @@
     <script>
         let currentRunId = null;
         let eventSource = null;
+        let verboseVisible = false;
+        let verboseCount = 0;
+        let activeFilters = new Set(['tool_call', 'tool_result', 'llm_request', 'llm_response', 'info']);
+
+        // ── Verbose panel ──────────────────────────────────────
+
+        function toggleVerbose() {
+            verboseVisible = !verboseVisible;
+            document.getElementById('verbosePanel').classList.toggle('visible', verboseVisible);
+            document.getElementById('verboseToggle').classList.toggle('active', verboseVisible);
+        }
+
+        function toggleFilter(btn) {
+            const kind = btn.dataset.kind;
+            btn.classList.toggle('on');
+            if (activeFilters.has(kind)) {
+                activeFilters.delete(kind);
+            } else {
+                activeFilters.add(kind);
+            }
+            // re-filter visible entries
+            document.querySelectorAll('.verbose-entry').forEach(el => {
+                el.style.display = activeFilters.has(el.dataset.kind) ? '' : 'none';
+            });
+        }
+
+        function addVerboseEntry(kind, title, body, timestamp) {
+            verboseCount++;
+            document.getElementById('verboseCount').textContent = verboseCount;
+
+            const log = document.getElementById('verboseLog');
+            const ts = new Date(timestamp * 1000).toLocaleTimeString();
+
+            const entry = document.createElement('div');
+            entry.className = 'verbose-entry';
+            entry.dataset.kind = kind;
+            if (!activeFilters.has(kind)) entry.style.display = 'none';
+
+            const hasBody = body && body.trim().length > 0;
+
+            entry.innerHTML = `
+                <div class="verbose-entry-header" ${hasBody ? 'onclick="this.parentElement.classList.toggle(\'open\')"' : ''}>
+                    ${hasBody ? '<span class="arrow">&#9654;</span>' : '<span class="arrow" style="visibility:hidden">&#9654;</span>'}
+                    <span class="badge badge-${kind}">${kind.replace('_', ' ')}</span>
+                    <span class="title">${escapeHtml(title)}</span>
+                    <span class="ts">${ts}</span>
+                </div>
+                ${hasBody ? `<div class="verbose-entry-body">${escapeHtml(body)}</div>` : ''}
+            `;
+
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // ── Core functions ──────────────────────────────────────
 
         function startResearch() {
             const topic = document.getElementById('topic').value.trim();
@@ -409,7 +635,10 @@
 
             document.getElementById('startBtn').disabled = true;
             document.getElementById('statusLog').innerHTML = '';
+            document.getElementById('verboseLog').innerHTML = '';
             document.getElementById('results').classList.remove('visible');
+            verboseCount = 0;
+            document.getElementById('verboseCount').textContent = '0';
             resetPipeline();
 
             fetch('/api/research', {
@@ -436,6 +665,12 @@
 
             eventSource.onmessage = (e) => {
                 const data = JSON.parse(e.data);
+
+                if (data.stage === 'verbose') {
+                    addVerboseEntry(data.kind, data.title, data.body, data.time);
+                    return;
+                }
+
                 addStatus(data.stage, data.stage, data.message);
                 updatePipeline(data.stage);
 

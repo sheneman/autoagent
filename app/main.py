@@ -79,12 +79,22 @@ async def start_research(request: Request):
     async def status_callback(stage: str, message: str):
         await status_queue.put({"stage": stage, "message": message, "time": time.time()})
 
+    async def verbose_callback(kind: str, title: str, body: str):
+        await status_queue.put({
+            "stage": "verbose",
+            "kind": kind,
+            "title": title,
+            "body": body,
+            "time": time.time(),
+        })
+
     async def run_in_background():
         try:
             result = await run_pipeline(
                 topic=topic,
                 config=config,
                 status_callback=status_callback,
+                verbose_callback=verbose_callback,
             )
             active_pipelines[run_id]["result"] = result
             active_pipelines[run_id]["status"] = "complete"

@@ -87,7 +87,7 @@ episode — all powered by local AI inference via [Mindrouter](https://mindroute
 
 | Agent | Role | Tools | Output |
 |-------|------|-------|--------|
-| **Researcher** | Gathers information via web search and scraping | `brave_web_search`, `brave_news_search`, `scrape_url`, `recall_memory`, `save_fact` | `ResearchFindings` |
+| **Researcher** | Gathers information via web search and scraping | `brave_web_search`, `scrape_url`, `recall_memory`, `save_fact` | `ResearchFindings` |
 | **Writer** | Transforms research into a polished report | None (pure generation) | `WrittenReport` |
 | **Evaluator** | Scores quality, provides improvement feedback | None (pure evaluation) | `Evaluation` |
 | **Podcaster** | Creates a two-host podcast script | None (pure generation) | `PodcastScript` |
@@ -240,9 +240,8 @@ class ResearchFindings(BaseModel):
     raw_notes: str
 
 researcher_agent = Agent(
-    "openai:placeholder",       # Model set at runtime
     deps_type=AgentDeps,
-    result_type=ResearchFindings,
+    output_type=ResearchFindings,
     system_prompt="You are a meticulous research agent...",
     retries=2,
 )
@@ -260,11 +259,11 @@ an evaluation loop:
 
 ```python
 for iteration in range(config.max_research_iterations):
-    research = await researcher_agent.run(prompt, deps=deps)
-    report = await writer_agent.run(write_prompt, deps=deps)
-    evaluation = await evaluator_agent.run(eval_prompt, deps=deps)
+    research = await researcher_agent.run(prompt, deps=deps, model=model)
+    report = await writer_agent.run(write_prompt, deps=deps, model=model)
+    evaluation = await evaluator_agent.run(eval_prompt, deps=deps, model=model)
 
-    if evaluation.data.passed:
+    if evaluation.output.passed:
         break  # Quality threshold met
     # Otherwise, loop back with evaluator feedback
 ```
@@ -303,12 +302,12 @@ segments = parse_script_segments(script)
 # [{"speaker": "ALEX", "text": "..."}, {"speaker": "SAM", "text": "..."}, ...]
 
 # Different voices for each host
-voice_map = {"ALEX": "af_heart", "SAM": "am_adam"}
+voice_map = {"ALEX": "bm_george", "SAM": "af_heart"}
 
 for seg in segments:
     resp = await http_client.post(
         f"{base_url}/audio/speech",
-        json={"model": "kokoro", "input": seg["text"], "voice": voice_map[seg["speaker"]]},
+        json={"model": "kokoro", "input": seg["text"], "voice": voice_map[seg["speaker"]], "speed": 1.2},
     )
     # Append audio segment
 ```
@@ -402,4 +401,4 @@ Change `MINDROUTER_MODEL` in `.env`. Good options on Mindrouter:
 
 ---
 
-*Built as a tutorial for building agentic AI applications. Funded in part by NSF Award #2427549.*
+*Built as a tutorial for building agentic AI applications.*

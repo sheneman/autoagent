@@ -7,7 +7,7 @@ This agent receives a research brief from the orchestrator and performs
 multiple search queries to build a comprehensive set of findings. It
 stores key facts in memory for future reference.
 
-Tools: brave_web_search, brave_news_search, scrape_url
+Tools: brave_web_search, scrape_url, recall_memory, save_fact
 """
 
 from __future__ import annotations

@@ -63,7 +63,17 @@ avoid redundant searches.
 The orchestrator runs a research→write→evaluate loop up to
 `MAX_RESEARCH_ITERATIONS` times. Each iteration incorporates the
 evaluator's feedback, progressively improving the report until it meets
-quality standards or the iteration limit is reached.
+quality standards or the iteration limit is reached. The orchestrator
+tracks the best-scoring result across all iterations — if a later
+iteration regresses, the highest-quality output is used for podcast
+generation.
+
+### Verbose Trace System
+The web UI includes a toggleable verbose trace panel that displays all
+agent interactions in detail: tool calls, tool results, LLM requests,
+LLM responses, and informational events. This is implemented via a
+`verbose_callback` passed through the dependency container (`AgentDeps`)
+and streamed to the browser as SSE events with `stage="verbose"`.
 
 ### Timeouts and Retries
 - Each agent call has an `asyncio.wait_for` timeout (2x `REQUEST_TIMEOUT`)
@@ -79,6 +89,8 @@ All settings are in environment variables (see `.env.example`):
 - `BRAVE_API_KEY` — Brave Search API key
 - `MAX_RESEARCH_ITERATIONS` — Max evaluation loop iterations (default: 3)
 - `REQUEST_TIMEOUT` — Per-request timeout in seconds (default: 120)
+- `PODCAST_VOICE_A` — Kokoro TTS voice for host Alex (default: bm_george)
+- `PODCAST_VOICE_B` — Kokoro TTS voice for host Sam (default: af_heart)
 
 ## Running
 

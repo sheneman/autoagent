@@ -33,11 +33,11 @@ ALEX: [dialogue]
 SAM: [dialogue]
 
 CRITICAL RULES:
-- Do NOT have hosts say each other's names at every turn. Names should appear
-  rarely — only when it sounds natural, like emphasis or disagreement. Most
-  turns should just start talking without addressing the other person by name.
+- NEVER have hosts say each other's names. Not "Thanks, Alex" or "Well, Sam"
+  or any variation. Zero name usage in the dialogue text. The voices are
+  distinct enough that listeners always know who is speaking.
 - The ALEX:/SAM: prefixes are metadata for the TTS engine, NOT spoken aloud.
-  The dialogue itself should flow as natural conversation.
+  The dialogue itself should flow as natural conversation without names.
 
 Guidelines:
 - Open with a catchy hook that draws listeners in.
@@ -129,12 +129,15 @@ async def generate_podcast_audio(
         voice = voice_map.get(seg["speaker"], deps.config.podcast_voice_a)
         text = seg["text"]
 
+        await deps.send_verbose(
+            "info", f"TTS segment {i + 1}/{len(segments)}",
+            f"Speaker: {seg['speaker']} → Voice: {voice}\nText: {text[:120]}..."
+        )
         await deps.send_status(
             "podcaster",
-            f"Synthesizing segment {i + 1}/{len(segments)} ({seg['speaker']})..."
+            f"Synthesizing segment {i + 1}/{len(segments)} ({seg['speaker']} → {voice})..."
         )
 
-        # Call Mindrouter TTS
         tts_payload = {
             "model": "kokoro",
             "input": text,
@@ -143,6 +146,7 @@ async def generate_podcast_audio(
             "speed": 1.0,
         }
 
+        resp = None
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -163,8 +167,11 @@ async def generate_podcast_audio(
                     import asyncio
                     await asyncio.sleep(2 ** attempt)
                 else:
-                    await deps.send_status("podcaster", f"TTS failed for segment {i + 1}: {e}")
-                    continue
+                    await deps.send_status("podcaster", f"TTS failed for segment {i + 1}, skipping: {e}")
+                    resp = None
+
+        if resp is None or resp.status_code != 200:
+            continue
 
         audio_data = io.BytesIO(resp.content)
         segment_audio = AudioSegment.from_mp3(audio_data)

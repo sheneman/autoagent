@@ -44,10 +44,10 @@ class Config:
 
     # TTS voice mapping for podcast hosts
     podcast_voice_a: str = field(
-        default_factory=lambda: os.getenv("PODCAST_VOICE_A", "af_heart")
+        default_factory=lambda: os.getenv("PODCAST_VOICE_A", "bm_george")
     )
     podcast_voice_b: str = field(
-        default_factory=lambda: os.getenv("PODCAST_VOICE_B", "am_adam")
+        default_factory=lambda: os.getenv("PODCAST_VOICE_B", "af_sarah")
     )
 
     # Paths

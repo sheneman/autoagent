@@ -168,6 +168,12 @@ async def run_pipeline(
         writer_result: WrittenReport | None = None
         eval_result: Evaluation | None = None
 
+        # Track best result across iterations
+        best_writer_result: WrittenReport | None = None
+        best_research_result: ResearchFindings | None = None
+        best_eval_result: Evaluation | None = None
+        best_score: float = -1
+
         for iteration in range(config.max_research_iterations):
             results["iterations"] = iteration + 1
 
@@ -335,18 +341,37 @@ async def run_pipeline(
             )
             await deps.send_status("evaluator", f"Scores: {scores}")
 
+            # Track the best result across all iterations
+            if eval_result.overall_score > best_score:
+                best_score = eval_result.overall_score
+                best_writer_result = writer_result
+                best_research_result = research_result
+                best_eval_result = eval_result
+
             if eval_result.passed:
                 await deps.send_status("evaluator", "Report PASSED quality review!")
                 await deps.send_verbose("info", "Evaluation PASSED", scores)
                 break
+            elif iteration + 1 >= config.max_research_iterations:
+                await deps.send_status(
+                    "evaluator",
+                    f"Max iterations reached. Using best result (score: {best_score}/10)."
+                )
+                await deps.send_verbose("info", "Max iterations — using best result",
+                    f"Best score: {best_score}/10 (iteration with highest overall)")
             else:
                 await deps.send_status(
                     "evaluator",
-                    f"Report needs improvement. Looping back... "
-                    f"({iteration + 1}/{config.max_research_iterations})"
+                    f"Report needs improvement. Looping back for iteration "
+                    f"{iteration + 2}/{config.max_research_iterations}..."
                 )
                 await deps.send_verbose("info", "Evaluation FAILED — looping",
                     f"Iteration {iteration + 1}/{config.max_research_iterations}\n{scores}")
+
+        # Use best result across all iterations, not just the last
+        writer_result = best_writer_result or writer_result
+        research_result = best_research_result or research_result
+        eval_result = best_eval_result or eval_result
 
         results["research"] = research_result.model_dump() if research_result else None
         results["report"] = writer_result.model_dump() if writer_result else None

@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoAgent — Deep Research &amp; Podcast Generator</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --border: #2a2d3a;
+            --text: #e1e4ed;
+            --text-dim: #8b8fa3;
+            --accent: #6c63ff;
+            --accent-glow: rgba(108, 99, 255, 0.15);
+            --green: #22c55e;
+            --yellow: #eab308;
+            --red: #ef4444;
+            --blue: #3b82f6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.25rem;
+        }
+
+        header p { color: var(--text-dim); font-size: 0.95rem; }
+
+        /* Input Section */
+        .input-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-section label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .input-row input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: var(--text);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-row input:focus { border-color: var(--accent); }
+
+        .btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Agent Pipeline Tracker */
+        .pipeline {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .pipeline-step {
+            flex: 1;
+            min-width: 120px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .pipeline-step .icon { font-size: 1.5rem; margin-bottom: 0.25rem; }
+        .pipeline-step .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .pipeline-step.active {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .pipeline-step.done {
+            border-color: var(--green);
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .pipeline-step.error {
+            border-color: var(--red);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Status Log */
+        .status-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+
+        .status-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-header .dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+        }
+
+        .status-header .dot.live {
+            background: var(--green);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .status-log {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 0.75rem 1rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+        }
+
+        .status-entry {
+            padding: 0.25rem 0;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .status-entry .time { color: var(--text-dim); white-space: nowrap; }
+        .status-entry .stage {
+            font-weight: 600;
+            min-width: 90px;
+        }
+
+        .stage-researcher { color: var(--blue); }
+        .stage-writer { color: var(--accent); }
+        .stage-evaluator { color: var(--yellow); }
+        .stage-podcaster { color: #f97316; }
+        .stage-complete { color: var(--green); }
+        .stage-error { color: var(--red); }
+        .stage-question { color: var(--yellow); }
+
+        /* Results */
+        .results { display: none; }
+        .results.visible { display: block; }
+
+        .result-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+        }
+
+        .tab-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-bottom: none;
+            color: var(--text-dim);
+            padding: 0.6rem 1.25rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--bg);
+            color: var(--text);
+            border-color: var(--accent);
+        }
+
+        .tab-content {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 0 8px 8px 8px;
+            padding: 1.5rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .tab-panel h2 { font-size: 1.25rem; margin-bottom: 1rem; }
+        .tab-panel h3 { font-size: 1rem; margin: 1rem 0 0.5rem; color: var(--accent); }
+
+        .report-content {
+            line-height: 1.8;
+            font-size: 0.95rem;
+        }
+
+        .report-content p { margin-bottom: 0.75rem; }
+
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.75rem;
+            margin: 1rem 0;
+        }
+
+        .score-card {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        .score-card .value { font-size: 1.5rem; font-weight: 700; }
+        .score-card .label { font-size: 0.75rem; color: var(--text-dim); }
+
+        .score-high { color: var(--green); }
+        .score-mid { color: var(--yellow); }
+        .score-low { color: var(--red); }
+
+        audio {
+            width: 100%;
+            margin-top: 1rem;
+            border-radius: 8px;
+        }
+
+        .podcast-script {
+            white-space: pre-wrap;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.7;
+        }
+
+        .podcast-script .speaker-alex { color: var(--blue); font-weight: 600; }
+        .podcast-script .speaker-sam { color: #f97316; font-weight: 600; }
+
+        /* User Input Area */
+        .user-input-area {
+            display: none;
+            background: var(--surface);
+            border: 2px solid var(--yellow);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .user-input-area.visible { display: block; }
+        .user-input-area .question { font-weight: 600; margin-bottom: 0.75rem; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .pipeline { flex-direction: column; }
+            .pipeline-step { min-width: auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AutoAgent</h1>
+            <p>Multi-agent deep research &amp; podcast generation powered by Mindrouter</p>
+        </header>
+
+        <!-- Input -->
+        <div class="input-section">
+            <label for="topic">What would you like to research?</label>
+            <div class="input-row">
+                <input type="text" id="topic" placeholder="e.g., The impact of quantum computing on cryptography" autofocus />
+                <button class="btn" id="startBtn" onclick="startResearch()">Research</button>
+            </div>
+        </div>
+
+        <!-- Pipeline Tracker -->
+        <div class="pipeline" id="pipeline">
+            <div class="pipeline-step" id="step-researcher">
+                <div class="icon">&#128270;</div>
+                <div class="label">Researcher</div>
+            </div>
+            <div class="pipeline-step" id="step-writer">
+                <div class="icon">&#9997;&#65039;</div>
+                <div class="label">Writer</div>
+            </div>
+            <div class="pipeline-step" id="step-evaluator">
+                <div class="icon">&#9989;</div>
+                <div class="label">Evaluator</div>
+            </div>
+            <div class="pipeline-step" id="step-podcaster">
+                <div class="icon">&#127911;</div>
+                <div class="label">Podcaster</div>
+            </div>
+            <div class="pipeline-step" id="step-complete">
+                <div class="icon">&#127881;</div>
+                <div class="label">Complete</div>
+            </div>
+        </div>
+
+        <!-- User Input (for agent questions) -->
+        <div class="user-input-area" id="userInputArea">
+            <div class="question" id="agentQuestion"></div>
+            <div class="input-row">
+                <input type="text" id="userInput" placeholder="Your response..." />
+                <button class="btn" onclick="sendUserInput()">Send</button>
+            </div>
+        </div>
+
+        <!-- Status Log -->
+        <div class="status-panel">
+            <div class="status-header">
+                <div class="dot" id="statusDot"></div>
+                <span>Agent Activity</span>
+            </div>
+            <div class="status-log" id="statusLog">
+                <div class="status-entry">
+                    <span class="time">--:--:--</span>
+                    <span class="stage">ready</span>
+                    <span class="msg">Enter a topic and click Research to begin.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results">
+            <div class="result-tabs">
+                <button class="tab-btn active" onclick="switchTab('report')">Report</button>
+                <button class="tab-btn" onclick="switchTab('evaluation')">Evaluation</button>
+                <button class="tab-btn" onclick="switchTab('podcast')">Podcast</button>
+            </div>
+            <div class="tab-content">
+                <div class="tab-panel active" id="tab-report">
+                    <div class="report-content" id="reportContent"></div>
+                </div>
+                <div class="tab-panel" id="tab-evaluation">
+                    <div id="evalContent"></div>
+                </div>
+                <div class="tab-panel" id="tab-podcast">
+                    <div id="podcastContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentRunId = null;
+        let eventSource = null;
+
+        function startResearch() {
+            const topic = document.getElementById('topic').value.trim();
+            if (!topic) return;
+
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('statusLog').innerHTML = '';
+            document.getElementById('results').classList.remove('visible');
+            resetPipeline();
+
+            fetch('/api/research', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ topic })
+            })
+            .then(r => r.json())
+            .then(data => {
+                currentRunId = data.run_id;
+                document.getElementById('statusDot').classList.add('live');
+                connectSSE(data.run_id);
+            })
+            .catch(err => {
+                addStatus('error', 'error', 'Failed to start: ' + err.message);
+                document.getElementById('startBtn').disabled = false;
+            });
+        }
+
+        function connectSSE(runId) {
+            if (eventSource) eventSource.close();
+
+            eventSource = new EventSource(`/api/status/${runId}`);
+
+            eventSource.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                addStatus(data.stage, data.stage, data.message);
+                updatePipeline(data.stage);
+
+                if (data.stage === 'question') {
+                    showUserInput(data.message);
+                }
+
+                if (data.stage === 'complete' || data.stage === 'error') {
+                    eventSource.close();
+                    document.getElementById('statusDot').classList.remove('live');
+                    document.getElementById('startBtn').disabled = false;
+
+                    if (data.stage === 'complete') {
+                        fetchResults(runId);
+                    }
+                }
+            };
+
+            eventSource.onerror = () => {
+                eventSource.close();
+                document.getElementById('statusDot').classList.remove('live');
+                document.getElementById('startBtn').disabled = false;
+            };
+        }
+
+        function addStatus(stage, cls, message) {
+            const log = document.getElementById('statusLog');
+            const now = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'status-entry';
+            entry.innerHTML = `
+                <span class="time">${now}</span>
+                <span class="stage stage-${cls}">${stage}</span>
+                <span class="msg">${escapeHtml(message)}</span>
+            `;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updatePipeline(stage) {
+            const stageMap = {
+                'researcher': 'step-researcher',
+                'writer': 'step-writer',
+                'evaluator': 'step-evaluator',
+                'podcaster': 'step-podcaster',
+                'complete': 'step-complete'
+            };
+
+            const order = ['researcher', 'writer', 'evaluator', 'podcaster', 'complete'];
+            const currentIdx = order.indexOf(stage);
+
+            order.forEach((s, i) => {
+                const el = document.getElementById(stageMap[s]);
+                if (!el) return;
+                el.classList.remove('active', 'done', 'error');
+                if (i < currentIdx) el.classList.add('done');
+                else if (i === currentIdx) el.classList.add(stage === 'error' ? 'error' : 'active');
+            });
+
+            if (stage === 'complete') {
+                document.getElementById('step-complete').classList.remove('active');
+                document.getElementById('step-complete').classList.add('done');
+            }
+        }
+
+        function resetPipeline() {
+            document.querySelectorAll('.pipeline-step').forEach(el => {
+                el.classList.remove('active', 'done', 'error');
+            });
+        }
+
+        function fetchResults(runId) {
+            fetch(`/api/result/${runId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.result) {
+                    displayResults(data.result);
+                }
+            });
+        }
+
+        function displayResults(result) {
+            document.getElementById('results').classList.add('visible');
+
+            // Report tab
+            if (result.report) {
+                const r = result.report;
+                document.getElementById('reportContent').innerHTML = `
+                    <h2>${escapeHtml(r.title)}</h2>
+                    <div style="margin-bottom:1rem; padding:1rem; background:var(--surface); border-radius:8px;">
+                        <h3>Executive Summary</h3>
+                        <p>${escapeHtml(r.executive_summary)}</p>
+                    </div>
+                    <div>${formatMarkdown(r.full_report)}</div>
+                    <h3>Key Takeaways</h3>
+                    <ul>${r.key_takeaways.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>
+                    <p style="color:var(--text-dim); font-size:0.8rem; margin-top:1rem;">
+                        ${r.word_count} words | ${result.iterations} iteration(s) | ${result.duration_seconds}s total
+                    </p>
+                `;
+            }
+
+            // Evaluation tab
+            if (result.evaluation) {
+                const ev = result.evaluation;
+                const scoreColor = (s) => s >= 8 ? 'score-high' : s >= 6 ? 'score-mid' : 'score-low';
+                document.getElementById('evalContent').innerHTML = `
+                    <h2>Quality Evaluation</h2>
+                    <div class="score-grid">
+                        <div class="score-card"><div class="value ${scoreColor(ev.accuracy_score)}">${ev.accuracy_score}</div><div class="label">Accuracy</div></div>
+                        <div class="score-card"><div class="value ${scoreColor(ev.completeness_score)}">${ev.completeness_score}</div><div class="label">Completeness</div></div>
+                        <div class="score-card"><div class="value ${scoreColor(ev.clarity_score)}">${ev.clarity_score}</div><div class="label">Clarity</div></div>
+                        <div class="score-card"><div class="value ${scoreColor(ev.structure_score)}">${ev.structure_score}</div><div class="label">Structure</div></div>
+                        <div class="score-card"><div class="value ${scoreColor(ev.engagement_score)}">${ev.engagement_score}</div><div class="label">Engagement</div></div>
+                        <div class="score-card"><div class="value ${scoreColor(ev.overall_score)}">${ev.overall_score}</div><div class="label">Overall</div></div>
+                    </div>
+                    <p><strong>Verdict:</strong> ${ev.passed ? '<span style="color:var(--green)">PASSED</span>' : '<span style="color:var(--red)">NEEDS WORK</span>'}</p>
+                    <h3>Strengths</h3>
+                    <ul>${ev.strengths.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
+                    ${ev.improvements.length ? `<h3>Improvements</h3><ul>${ev.improvements.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>` : ''}
+                    <p style="color:var(--text-dim); margin-top:1rem;">${escapeHtml(ev.summary)}</p>
+                `;
+            }
+
+            // Podcast tab
+            if (result.podcast_script) {
+                const ps = result.podcast_script;
+                let scriptHtml = escapeHtml(ps.script)
+                    .replace(/^(ALEX:)/gm, '<span class="speaker-alex">ALEX:</span>')
+                    .replace(/^(SAM:)/gm, '<span class="speaker-sam">SAM:</span>');
+
+                let audioHtml = '';
+                if (result.audio_path) {
+                    const audioUrl = '/' + result.audio_path;
+                    audioHtml = `
+                        <h3>Listen</h3>
+                        <audio controls src="${audioUrl}"></audio>
+                    `;
+                }
+
+                document.getElementById('podcastContent').innerHTML = `
+                    <h2>${escapeHtml(ps.title)}</h2>
+                    <p style="color:var(--text-dim);">${ps.segment_count} segments | ~${ps.estimated_duration_minutes} minutes</p>
+                    ${audioHtml}
+                    <h3>Script</h3>
+                    <div class="podcast-script">${scriptHtml}</div>
+                `;
+            }
+        }
+
+        function switchTab(name) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('tab-' + name).classList.add('active');
+        }
+
+        function showUserInput(question) {
+            const area = document.getElementById('userInputArea');
+            document.getElementById('agentQuestion').textContent = question;
+            area.classList.add('visible');
+            document.getElementById('userInput').focus();
+        }
+
+        function sendUserInput() {
+            const text = document.getElementById('userInput').value.trim();
+            if (!text || !currentRunId) return;
+
+            fetch(`/api/user-input/${currentRunId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+
+            document.getElementById('userInputArea').classList.remove('visible');
+            document.getElementById('userInput').value = '';
+            addStatus('user', 'complete', 'You: ' + text);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function formatMarkdown(md) {
+            return escapeHtml(md)
+                .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+                .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+                .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                .replace(/^- (.+)$/gm, '<li>$1</li>')
+                .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/^/, '<p>')
+                .replace(/$/, '</p>');
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('topic').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') startResearch();
+        });
+
+        document.getElementById('userInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendUserInput();
+        });
+    </script>
+</body>
+</html>

@@ -17,7 +17,7 @@ from pydantic_ai import Agent, RunContext
 
 from app.agents.deps import AgentDeps
 from app.memory.manager import MemoryEntry
-from app.tools.brave_search import brave_news_search, brave_web_search
+from app.tools.brave_search import brave_web_search
 from app.tools.web_scraper import scrape_url
 
 SYSTEM_PROMPT = """\
@@ -56,7 +56,6 @@ researcher_agent = Agent(
 )
 
 researcher_agent.tool(brave_web_search)
-researcher_agent.tool(brave_news_search)
 researcher_agent.tool(scrape_url)
 
 

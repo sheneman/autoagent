@@ -3,7 +3,9 @@
 A tutorial project demonstrating how to build agentic AI applications in Python.
 AutoAgent takes a research topic, investigates it with multiple specialized AI
 agents, produces a quality-reviewed report, and generates a two-host podcast
-episode — all powered by local AI inference via [Mindrouter](https://mindrouter.uidaho.edu).
+episode — all powered by local AI inference via [MindRouter](https://github.com/ui-insight/MindRouter).
+
+Slides: [`tech_talk_agents_april_2026.pptx`](tech_talk_agents_april_2026.pptx)
 
 ---
 
@@ -392,7 +394,7 @@ Change `MINDROUTER_MODEL` in `.env`. Good options on Mindrouter:
 | Component | Technology | Why |
 |-----------|-----------|-----|
 | Agent Framework | [PydanticAI](https://ai.pydantic.dev/) | Type-safe, fast, great docs, Python-native |
-| LLM Inference | [Mindrouter](https://mindrouter.uidaho.edu) | Local, FERPA-compliant, OpenAI-compatible |
+| LLM Inference | [MindRouter](https://github.com/ui-insight/MindRouter) | Local, FERPA-compliant, OpenAI-compatible |
 | Web Search | [Brave Search API](https://brave.com/search/api/) | Privacy-focused, generous free tier |
 | TTS Engine | Kokoro (via Mindrouter) | High-quality, multiple voices |
 | Web Framework | [FastAPI](https://fastapi.tiangolo.com/) | Async, fast, auto-docs |

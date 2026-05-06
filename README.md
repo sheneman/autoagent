@@ -7,6 +7,10 @@ episode — all powered by local AI inference via [MindRouter](https://github.co
 
 Slides: [`tech_talk_agents_april_2026.pptx`](tech_talk_agents_april_2026.pptx)
 
+### 🎥 Demo Video
+
+[![Watch Demo](https://img.youtube.com/vi/qCfJn1drpEM/hqdefault.jpg)](https://youtu.be/qCfJn1drpEM)
+
 ---
 
 ## Table of Contents
